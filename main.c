@@ -106,11 +106,12 @@ int main(int argc, char *argv[]) {
             printf("crc requires argument \"bank\"\n");
             return 1;
         }
-        argc--;
-        argv++;
         request.command = BCP_CALC_BANK_CRC;
         request.data[0] = atoi(argv[0]);
         request.length = 1;
+
+        argc -= 2;
+        argv += 2;
     } 
     else if (strcmp(command, "run") == 0) {
         if (argc != 0) {

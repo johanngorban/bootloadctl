@@ -1,5 +1,6 @@
 #include "bcp.h"
 #include "serial.h"
+#include "handlers.h"
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
@@ -63,10 +64,6 @@ int main(int argc, char *argv[]) {
         argv += 2;
     } 
     else if (strcmp(command, "update") == 0) {
-        if (argc != 0) {
-            printf("Unknown arguments for update\n");
-            return 1;
-        }
         request.command = BCP_UPDATE_FIRMWARE;
     }
     else if (strcmp(command, "crc") == 0) {
@@ -82,17 +79,9 @@ int main(int argc, char *argv[]) {
         argv += 2;
     } 
     else if (strcmp(command, "run") == 0) {
-        if (argc != 0) {
-            printf("Unknown arguments for run\n");
-            return 1;
-        }
         request.command = BCP_RUN_FIRMWARE;
     }
     else if (strcmp(command, "version") == 0) {
-        if (argc != 0) {
-            printf("Unknown arguments for version\n");
-            return 1;
-        }
         request.command = BCP_GET_VERSION;
     }
     else {
@@ -103,8 +92,11 @@ int main(int argc, char *argv[]) {
     request.crc = bcp_request_calculate_crc16(&request);
     
     char serial_port[256] = "/dev/ttyACM0";
-    if (argc > 0) {
-        strcpy(serial_port, argv[0]);
+    if (argc > 1) {
+        strcpy(serial_port, argv[1]);
+    } else {
+        printf("Keyword 'port' should be specified\n");
+        return 1;
     }
 
     int fd = open(serial_port, O_RDWR | O_NOCTTY | O_SYNC);
@@ -128,12 +120,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    bcp_response_print(&response);
+    handle_response(&response, false);
 
-    uint16_t expected = bcp_response_calculate_crc16(&response);
-    if (expected != response.crc) {
-        printf("CRC error: got %02x (%02x expected)\n", response.crc, expected);
-        return 1;
-    }
     return 0;
 }

@@ -92,11 +92,17 @@ int main(int argc, char *argv[]) {
     request.crc = bcp_request_calculate_crc16(&request);
     
     char serial_port[256] = "/dev/ttyACM0";
-    if (argc > 1) {
+    if (argc > 0) {
+        if (strcmp(argv[0], "port") != 0) {
+            printf("Keyword 'port' should be specified\n");
+            return 1;
+        }
+        if (argc == 1) {
+            printf("Port name should be specified\n");
+            return 1;
+        }
+
         strcpy(serial_port, argv[1]);
-    } else {
-        printf("Keyword 'port' should be specified\n");
-        return 1;
     }
 
     int fd = open(serial_port, O_RDWR | O_NOCTTY | O_SYNC);

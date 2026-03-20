@@ -16,7 +16,7 @@ void bcp_response_print(const bcp_response_t *r) {
     if (r->length > 0) {
         printf("│ data     :                            │\n");
     }
-    
+
 
     for (uint8_t i = 0; i < r->length; i++) {
         if (i % 8 == 0) printf("│   %04X: ", i);
@@ -41,28 +41,22 @@ int main(int argc, char *argv[]) {
     bcp_request_t request;
     bcp_request_init(&request);
 
+    context_t context;
+
     char *command = argv[1];
     argc -= 2;
     argv += 2;
     if (strcmp(command, "upload") == 0) {
-        if (argc < 2 || (strcmp(argv[1], "--protocol") == 0)) {
-            printf("crc requires argument \"--protocol\"\n");
+        if (argc < 2) {
+            printf("upload requires path to file\n");
             return 1;
         }
         request.command = BCP_UPLOAD_FIRMWARE;
+        strcpy(context.firmware_path, argv[1]);
 
-        char *protocol = argv[2];
-        if (strcmp(protocol, "xmodem") == 0) {
-            request.data[0] = 1; // mock!!!
-            request.length = 1;
-        }
-        else {
-            printf("Unknown protocol for upload: %s\n", protocol);
-            return 1;
-        }
         argc -= 2;
         argv += 2;
-    } 
+    }
     else if (strcmp(command, "update") == 0) {
         request.command = BCP_UPDATE_FIRMWARE;
     }
@@ -77,7 +71,7 @@ int main(int argc, char *argv[]) {
 
         argc -= 2;
         argv += 2;
-    } 
+    }
     else if (strcmp(command, "run") == 0) {
         request.command = BCP_RUN_FIRMWARE;
     }
@@ -90,7 +84,7 @@ int main(int argc, char *argv[]) {
     }
 
     request.crc = bcp_request_calculate_crc16(&request);
-    
+
     char serial_port[256] = "/dev/ttyACM0";
     if (argc > 0) {
         if (strcmp(argv[0], "port") != 0) {
@@ -113,11 +107,13 @@ int main(int argc, char *argv[]) {
 
     serial_port_init(fd, B115200, 0, true);
 
+    context.serial_fd = fd;
+
     if (bcp_send_request(fd, &request) < 0) {
         printf("Error with sending BCP packet\n");
         return 1;
     }
-    
+
     bcp_response_t response;
     bcp_response_init(&response);
 
@@ -126,7 +122,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    handle_response(&response, false);
+    handle_response(&context, &response, false);
 
     return 0;
 }

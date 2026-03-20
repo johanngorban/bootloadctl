@@ -1,6 +1,6 @@
 #include "handlers.h"
 #include "crc.h"
-#include "ymodem.h"
+#include "gmodem.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
@@ -12,7 +12,7 @@ static void handle_run_firmware(const bcp_response_t *response);
 
 static void handle_calc_bank_crc(const bcp_response_t *response);
 
-static void handle_upload_firmware(const context_t *context, const bcp_response_t *response);
+static void handle_upload_firmware(const context_t *context);
 
 void handle_response(const context_t *context, const bcp_response_t *response, bool debug){
     uint16_t expected = bcp_response_calculate_crc16(response);
@@ -37,12 +37,12 @@ void handle_response(const context_t *context, const bcp_response_t *response, b
         handle_calc_bank_crc(response);
         return;
     case BCP_UPLOAD_FIRMWARE:
-        handle_upload_firmware(context, response);
+        handle_upload_firmware(context);
         return;
     }
 }
 
-void handle_upload_firmware(const context_t *context, const bcp_response_t *response) {
+void handle_upload_firmware(const context_t *context) {
     FILE *f = fopen(context->firmware_path, "rb");
     if (f == NULL) {
         printf("Cannot open the firmware file.\n");
@@ -71,7 +71,7 @@ void handle_upload_firmware(const context_t *context, const bcp_response_t *resp
         return;
     }
 
-    ymodem_send(context->serial_fd, buf, size);
+    gmodem_send(context->serial_fd, buf, size);
     free(buf);
 }
 

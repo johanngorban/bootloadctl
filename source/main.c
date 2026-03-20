@@ -47,12 +47,12 @@ int main(int argc, char *argv[]) {
     argc -= 2;
     argv += 2;
     if (strcmp(command, "upload") == 0) {
-        if (argc < 2) {
+        if (argc < 1) {
             printf("upload requires path to file\n");
             return 1;
         }
         request.command = BCP_UPLOAD_FIRMWARE;
-        strcpy(context.firmware_path, argv[1]);
+        strcpy(context.firmware_path, argv[0]);
 
         argc -= 2;
         argv += 2;
@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
 
     serial_port_init(fd, B115200, 0, true);
 
-    context.serial_fd = fd;
+    context.serial_fd = 0;
 
     if (bcp_send_request(fd, &request) < 0) {
         printf("Error with sending BCP packet\n");
@@ -116,6 +116,9 @@ int main(int argc, char *argv[]) {
 
     bcp_response_t response;
     bcp_response_init(&response);
+    response.status = BCP_OK;
+    response.command = request.command;
+    response.crc = bcp_response_calculate_crc16(&response);
 
     if (bcp_get_response(fd, &response) < 0) {
         printf("An error occurred with response\n");

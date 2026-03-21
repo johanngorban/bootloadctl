@@ -19,4 +19,9 @@ build:
 clean:
 	rm -rf build
 
-.PHONY: clean
+compile_commands:
+	bear -- $(MAKE) clean all
+
+all: $(TARGET)
+
+.PHONY: all

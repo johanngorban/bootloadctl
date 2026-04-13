@@ -34,7 +34,7 @@ void bcp_response_print(const bcp_response_t *r) {
 // bootctl <command> [command args] [port <PORT>]
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("Usage: bootctl <command> [command args] [port <PORT>]\n");
+        printf("Usage: bootctl [verbose] <command> [command args] [port <PORT>]\n");
         return 1;
     }
 
@@ -42,6 +42,13 @@ int main(int argc, char *argv[]) {
     bcp_request_init(&request);
 
     context_t context;
+
+    char *verbose = argv[1];
+    if (strcmp(verbose, "verbose") == 0) {
+        context.debug = true;
+        argc -= 1;
+        argv += 1;
+    }
 
     char *command = argv[1];
     argc -= 2;
@@ -54,19 +61,19 @@ int main(int argc, char *argv[]) {
         request.command = BCP_UPLOAD_FIRMWARE;
         strcpy(context.firmware_path, argv[0]);
 
-        argc -= 2;
-        argv += 2;
+        argc -= 1;
+        argv += 1;
     }
     else if (strcmp(command, "update") == 0) {
         request.command = BCP_UPDATE_FIRMWARE;
     }
     else if (strcmp(command, "crc") == 0) {
-        if (argc < 2 || (strcmp(argv[1], "--bank") == 0)) {
+        if (argc < 2 || (strcmp(argv[0], "bank") != 0)) {
             printf("crc requires argument \"bank\"\n");
             return 1;
         }
         request.command = BCP_CALC_BANK_CRC;
-        request.data[0] = atoi(argv[0]);
+        request.data[0] = atoi(argv[1]);
         request.length = 1;
 
         argc -= 2;
@@ -107,7 +114,7 @@ int main(int argc, char *argv[]) {
 
     serial_port_init(fd, B115200, 0, true);
 
-    context.serial_fd = 0;
+    context.serial_fd = fd;
 
     if (bcp_send_request(fd, &request) < 0) {
         printf("Error with sending BCP packet\n");
@@ -116,16 +123,22 @@ int main(int argc, char *argv[]) {
 
     bcp_response_t response;
     bcp_response_init(&response);
-    response.status = BCP_OK;
-    response.command = request.command;
-    response.crc = bcp_response_calculate_crc16(&response);
 
     if (bcp_get_response(fd, &response) < 0) {
         printf("An error occurred with response\n");
         return 1;
     }
 
-    handle_response(&context, &response, false);
+    if (context.debug) {
+        printf("Handling response...\n");
+    }
+
+    handle_response(&context, &response);
+    if (context.debug) {
+        printf("Processing response...\n");
+        bcp_response_print(&response);
+    }
+    
 
     return 0;
 }

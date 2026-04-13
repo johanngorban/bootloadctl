@@ -17,8 +17,8 @@ int serial_port_init(int fd, int speed, int parity, bool blocking) {
     tty.c_iflag &= ~IGNBRK; // Disable break processing
     tty.c_lflag = 0;        // No signaling char, no echo
     tty.c_oflag = 0;
-    tty.c_cc[VMIN] = (int) blocking;     // Read doesn't block
-    tty.c_cc[VTIME] = 10;    // 1 seconds read timeout
+    tty.c_cc[VMIN]  = blocking ? 1 : 0;  /* block until byte arrives or timeout */
+    tty.c_cc[VTIME] = 30;                 /* 3 s read timeout (units: 100 ms)    */
 
     tty.c_iflag &= ~(IXON | IXOFF | IXANY);
     tty.c_cflag |= (CLOCAL | CREAD);

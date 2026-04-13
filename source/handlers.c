@@ -1,10 +1,12 @@
 #include "handlers.h"
 #include "crc.h"
-#include "gmodem.h"
+#include "fwpio.h"
+#include "fwp.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <termios.h>
 
 static void handle_get_version(const bcp_response_t *response);
 
@@ -12,9 +14,9 @@ static void handle_run_firmware(const bcp_response_t *response);
 
 static void handle_calc_bank_crc(const bcp_response_t *response);
 
-static void handle_upload_firmware(const context_t *context);
+static void handle_upload_firmware(const context_t *context, bcp_response_t *response);
 
-void handle_response(const context_t *context, const bcp_response_t *response, bool debug){
+void handle_response(const context_t *context, const bcp_response_t *response){
     uint16_t expected = bcp_response_calculate_crc16(response);
     if (expected != response->crc) {
         printf("CRC is not identical: 0x%02X (0x%02X expected)\n", response->crc, expected);
@@ -37,12 +39,12 @@ void handle_response(const context_t *context, const bcp_response_t *response, b
         handle_calc_bank_crc(response);
         return;
     case BCP_UPLOAD_FIRMWARE:
-        handle_upload_firmware(context);
+        handle_upload_firmware(context, response);
         return;
     }
 }
 
-void handle_upload_firmware(const context_t *context) {
+void handle_upload_firmware(const context_t *context, bcp_response_t *response) {
     FILE *f = fopen(context->firmware_path, "rb");
     if (f == NULL) {
         printf("Cannot open the firmware file.\n");
@@ -59,6 +61,7 @@ void handle_upload_firmware(const context_t *context) {
     buf = malloc(size);
     if (buf == NULL) {
         printf("Cannot allocate memory for bin file.\n");
+        fclose(f);
         return;
     }
 
@@ -71,7 +74,13 @@ void handle_upload_firmware(const context_t *context) {
         return;
     }
 
-    gmodem_send(context->serial_fd, buf, size);
+    if (context->debug) {
+        printf("Starting transmitting...\n");
+    }
+    fwp_status_t st = fwp_transmit(context->serial_fd, buf, size);
+    if (st != FWP_OK) {
+        printf("FWP error: %d\n", st);
+    }
     free(buf);
 }
 
